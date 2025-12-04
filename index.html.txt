@@ -1,0 +1,211 @@
+import React, { useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+const uid = () => Math.random().toString(36).substr(2, 9);
+
+const PageWrapper = ({ children, title }: { children: React.ReactNode; title: string }) => (
+  <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded shadow mb-4">
+    <h2 className="text-xl font-semibold mb-2">{title}</h2>
+    {children}
+  </div>
+);
+
+type BaseItem = { id: string; name: string; done: boolean };
+
+// Generic List Section for Habits/Tasks
+const ListSection = <T extends BaseItem>({
+  title,
+  items,
+  newItem,
+  setNewItem,
+  onAdd,
+  onComplete,
+  exp,
+  extraInputs,
+}: {
+  title: string;
+  items: T[];
+  newItem: string;
+  setNewItem: (val: string) => void;
+  onAdd: () => void;
+  onComplete: (id: string) => void;
+  exp: number;
+  extraInputs?: React.ReactNode;
+}) => (
+  <PageWrapper title={title}>
+    <div className="flex gap-2 mb-2 flex-wrap">
+      <input
+        value={newItem}
+        onChange={e => setNewItem(e.target.value)}
+        placeholder={`Add new ${title.toLowerCase()}`}
+        className="border p-2 rounded flex-1 text-black"
+      />
+      {extraInputs}
+      <button onClick={onAdd} className="bg-blue-500 text-white px-3 rounded">
+        Add
+      </button>
+    </div>
+    <ul className="space-y-2 max-h-64 overflow-y-auto">
+      {items.map(item => (
+        <li
+          key={item.id}
+          className={`${
+            item.done ? "bg-green-500 text-white" : "bg-gray-200"
+          } p-2 rounded flex justify-between`}
+        >
+          {"reps" in item && "weight" in item
+            ? `${item.name} · ${item.reps} reps · ${item.weight} kg`
+            : item.name}
+          {!item.done && (
+            <button
+              onClick={() => onComplete(item.id)}
+              className="bg-blue-500 text-white px-2 rounded"
+            >
+              +{exp} EXP
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  </PageWrapper>
+);
+
+export default function Dashboard() {
+  const [habits, setHabits] = useState<BaseItem[]>([]);
+  const [newHabit, setNewHabit] = useState("");
+
+  const [tasks, setTasks] = useState<BaseItem[]>([]);
+  const [newTask, setNewTask] = useState("");
+
+  const [workouts, setWorkouts] = useState<
+    (BaseItem & { reps: number; weight: number })[]
+  >([]);
+  const [newWorkoutName, setNewWorkoutName] = useState("");
+  const [newWorkoutReps, setNewWorkoutReps] = useState(0);
+  const [newWorkoutWeight, setNewWorkoutWeight] = useState(0);
+
+  const completeHabit = (id: string) =>
+    setHabits(habits.map(h => (h.id === id ? { ...h, done: true } : h)));
+  const completeTask = (id: string) =>
+    setTasks(tasks.map(t => (t.id === id ? { ...t, done: true } : t)));
+  const completeWorkout = (id: string) =>
+    setWorkouts(workouts.map(w => (w.id === id ? { ...w, done: true } : w)));
+
+  const totalEXP =
+    habits.filter(h => h.done).length * 5 +
+    tasks.filter(t => t.done).length * 10 +
+    workouts.filter(w => w.done).length * 15;
+
+  return (
+    <div className="p-4 max-w-4xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-center mb-4">Ultimate Dashboard</h1>
+      <div className="text-center mb-4 font-semibold text-lg">Total EXP: {totalEXP}</div>
+
+      {/* Habits */}
+      <ListSection
+        title="Habits"
+        items={habits}
+        newItem={newHabit}
+        setNewItem={setNewHabit}
+        onAdd={() => {
+          if (newHabit.trim()) {
+            setHabits([...habits, { id: uid(), name: newHabit, done: false }]);
+            setNewHabit("");
+          }
+        }}
+        onComplete={completeHabit}
+        exp={5}
+      />
+
+      {/* Tasks */}
+      <ListSection
+        title="Tasks"
+        items={tasks}
+        newItem={newTask}
+        setNewItem={setNewTask}
+        onAdd={() => {
+          if (newTask.trim()) {
+            setTasks([...tasks, { id: uid(), name: newTask, done: false }]);
+            setNewTask("");
+          }
+        }}
+        onComplete={completeTask}
+        exp={10}
+      />
+
+      {/* Workouts */}
+      <ListSection
+        title="Workouts"
+        items={workouts}
+        newItem={newWorkoutName}
+        setNewItem={setNewWorkoutName}
+        onAdd={() => {
+          if (newWorkoutName.trim()) {
+            setWorkouts([
+              ...workouts,
+              {
+                id: uid(),
+                name: newWorkoutName,
+                reps: newWorkoutReps,
+                weight: newWorkoutWeight,
+                done: false,
+              },
+            ]);
+            setNewWorkoutName("");
+            setNewWorkoutReps(0);
+            setNewWorkoutWeight(0);
+          }
+        }}
+        onComplete={completeWorkout}
+        exp={15}
+        extraInputs={
+          <>
+            <input
+              type="number"
+              min={0}
+              value={newWorkoutReps}
+              onChange={e => setNewWorkoutReps(Number(e.target.value))}
+              placeholder="Reps"
+              className="border p-2 rounded w-20 text-black"
+            />
+            <input
+              type="number"
+              min={0}
+              value={newWorkoutWeight}
+              onChange={e => setNewWorkoutWeight(Number(e.target.value))}
+              placeholder="Weight"
+              className="border p-2 rounded w-20 text-black"
+            />
+          </>
+        }
+      />
+
+      {/* Analytics */}
+      <PageWrapper title="Analytics">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={[
+                { name: "Habits", value: habits.filter(h => h.done).length },
+                { name: "Tasks", value: tasks.filter(t => t.done).length },
+                { name: "Workouts", value: workouts.filter(w => w.done).length },
+              ]}
+            >
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="value" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </PageWrapper>
+    </div>
+  );
+}
